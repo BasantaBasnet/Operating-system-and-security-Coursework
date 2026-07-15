@@ -1,5 +1,5 @@
 #define _GNU_SOURCE
-
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -45,10 +45,57 @@ void run_process_creation(void) {
     printf("All processes completed\n");
 }
 
+
+//  2. Threads 
+
+void *thread_task(void *arg) {
+    char *name = (char *)arg;
+    for (int i = 1; i <= 4; i++) {
+        printf("[%s] running iteration %d\n", name, i);
+        usleep(300000);
+    }
+    printf("[%s] done\n", name);
+    return NULL;
+}
+
+void run_multithreading(void) {
+    printf("\n2. MULTI-THREADING (3 threads)\n");
+
+    pthread_t threads[3];
+    char names[3][16] = {"Thread-1", "Thread-2", "Thread-3"};
+
+    for (int i = 0; i < 3; i++) {
+        pthread_create(&threads[i], NULL, thread_task, names[i]);
+    }
+    for (int i = 0; i < 3; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    printf("All threads completed\n");
+}
+
+//   main
+
 int main(void) {
-    setvbuf(stdout, NULL, _IOLBF, 0);
+    setvbuf(stdout, NULL, _IOLBF, 0);  // line-buffer output so fork() doesn't >
+
+    printf("TASK 1: PROCESS MANAGEMENT AND THREADING\n");
 
     run_process_creation();
+    run_multithreading();
+   // run_race_condition();
+    //run_semaphore();
+   // run_scheduler();
+   // run_deadlock();
+
+   // printf("ALL DEMONSTRATIONS COMPLETED\n");
+   // printf("  1. Process creation: 3 child processes (fork)\n");
+   // printf("  2. Multithreading: 3 threads (pthreads)\n");
+    //printf("  3. Mutex: race condition fixed\n");
+   // printf("  4. Semaphore: connection pool with 2 concurrent\n");
+    //printf("  5. Round robin scheduler: 4 processes simulated\n");
+   // printf("  6. Deadlock: shown and then prevented\n");
 
     return 0;
+
 }
