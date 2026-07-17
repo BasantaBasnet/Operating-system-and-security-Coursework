@@ -241,3 +241,4 @@ int main(void) {
 
     return 0;
 }
+// Implemented task 2  successfully
