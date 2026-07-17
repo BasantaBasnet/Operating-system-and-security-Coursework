@@ -27,6 +27,38 @@ int pageExists(int frames[], int frameCount, int page) {
     }
     return 0;
 }
+void printReferenceString(int pages[], int totalPages) {
+    printf("Reference String: ");
+    for (int i = 0; i < totalPages; i++) {
+        printf("%d ", pages[i]);
+    }
+    printf("\n");
+}
+
+int runFIFO(int pages[], int totalPages, int frameCount) {
+    int frames[frameCount];
+    int nextReplace = 0;
+    int faults = 0;
+
+    initializeFrames(frames, frameCount);
+
+    for (int i = 0; i < totalPages; i++) {
+        int page = pages[i];
+
+        if (pageExists(frames, frameCount, page)) {
+            printf("Ref %2d: page %d -> HIT   ", i + 1, page);
+        } else {
+            faults++;
+            frames[nextReplace] = page;
+            nextReplace = (nextReplace + 1) % frameCount;
+            printf("Ref %2d: page %d -> FAULT ", i + 1, page);
+        }
+
+        displayFrames(frames, frameCount);
+    }
+
+    return faults;
+}
 
 int main(void) {
     int pageSizeKB;
@@ -46,13 +78,29 @@ int main(void) {
         printf("Invalid input.\n");
         return 1;
     }
+    printf("Enter number of page references: ");
+    int totalPages;
+    scanf("%d", &totalPages);
+
+    if (totalPages <= 0 || totalPages > MAX_PAGES) {
+        printf("Invalid input.\n");
+        return 1;
+    }
+
+    int pages[MAX_PAGES];
+    printf("Enter the page reference string (space separated):\n");
+    for (int i = 0; i < totalPages; i++) {
+        scanf("%d", &pages[i]);
+    }
 
     printf("Page Size: %d KB | Frames: %d | Simulated Capacity: %d KB\n",
            pageSizeKB, frameCount, pageSizeKB * frameCount);
+    printReferenceString(pages, totalPages);
 
-    int frames[frameCount];
-    initializeFrames(frames, frameCount);
-    displayFrames(frames, frameCount);
+    printf("\n-- FIFO Simulation --\n");
+    int fifoFaults = runFIFO(pages, totalPages, frameCount);
+    printf("\nTotal FIFO page faults: %d\n", fifoFaults);
 
     return 0;
 }
+
