@@ -9,14 +9,12 @@ typedef struct {
     int totalReferences;
 } Result;
 
-// Fill all frames with EMPTY (no page loaded yet)
 void initializeFrames(int frames[], int frameCount) {
     for (int i = 0; i < frameCount; i++) {
         frames[i] = EMPTY;
     }
 }
 
-// Show the current state of memory frames
 void displayFrames(int frames[], int frameCount) {
     printf("Frames: ");
     for (int i = 0; i < frameCount; i++) {
@@ -26,13 +24,13 @@ void displayFrames(int frames[], int frameCount) {
     printf("\n");
 }
 
-// Check whether a page is already loaded in memory
 int pageExists(int frames[], int frameCount, int page) {
     for (int i = 0; i < frameCount; i++) {
         if (frames[i] == page) return 1;
     }
     return 0;
 }
+
 void printReferenceString(int pages[], int totalPages) {
     printf("Reference String: ");
     for (int i = 0; i < totalPages; i++) {
@@ -67,7 +65,6 @@ Result runFIFO(int pages[], int totalPages, int frameCount) {
     return result;
 }
 
-// LRU: replaces whichever page hasn't been used for the longest time
 Result runLRU(int pages[], int totalPages, int frameCount) {
     int frames[frameCount];
     int lastUsed[frameCount];
@@ -112,7 +109,7 @@ Result runLRU(int pages[], int totalPages, int frameCount) {
         displayFrames(frames, frameCount);
     }
 
-    return  result;
+    return result;
 }
 
 void printStatistics(Result result, const char *algorithm) {
@@ -131,10 +128,10 @@ void compareAlgorithms(Result fifo, Result lru) {
     float lruHit  = (float)lru.hits  / lru.totalReferences  * 100;
 
     printf("\nAlgorithm     Faults   Hits   Hit Ratio\n");
-    printf("\n");
+    printf(" \n");
     printf("FIFO          %5d   %4d    %6.2f%%\n", fifo.pageFaults, fifo.hits, fifoHit);
     printf("LRU           %5d   %4d    %6.2f%%\n", lru.pageFaults, lru.hits, lruHit);
-    printf("\n");
+    printf(" \n");
 
     if (fifo.pageFaults < lru.pageFaults) {
         printf("FIFO performed better by %d fewer faults.\n", lru.pageFaults - fifo.pageFaults);
@@ -146,9 +143,9 @@ void compareAlgorithms(Result fifo, Result lru) {
 }
 
 void runTestCase(const char *label, int pages[], int totalPages, int frameCount, int pageSizeKB) {
-    printf("\n  \n");
+    printf("\n \n");
     printf("%s\n", label);
-    printf("\n");
+    printf(" \n");
     printf("Page Size: %d KB | Frames: %d | Simulated Capacity: %d KB\n",
            pageSizeKB, frameCount, pageSizeKB * frameCount);
     printReferenceString(pages, totalPages);
@@ -171,8 +168,8 @@ void runBuiltInTestCases(int pageSizeKB) {
 
     int pages3[] = {1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5};
     printf("\n \n");
-    printf("TEST CASE 3: Belady's Anomaly Check\n");
-    printf("\n");
+    printf("TEST CASE 3: Belady Anomaly Check\n");
+    printf(" \n");
     printf("Comparing FIFO fault count as frame count increases.\n");
 
     for (int frames = 3; frames <= 4; frames++) {
@@ -180,8 +177,37 @@ void runBuiltInTestCases(int pageSizeKB) {
         printf("FIFO with %d frames -> %d page faults\n\n", frames, r.pageFaults);
     }
 }
+
+void runCustomInput(int pageSizeKB) {
+    int frameCount, totalPages;
+    int pages[MAX_PAGES];
+
+    printf("\nEnter number of memory frames: ");
+    scanf("%d", &frameCount);
+
+    printf("Enter number of page references (max %d): ", MAX_PAGES);
+    scanf("%d", &totalPages);
+
+    if (frameCount <= 0) {
+        printf("Invalid input: number of frames must be positive.\n");
+        return;
+    }
+    if (totalPages <= 0 || totalPages > MAX_PAGES) {
+        printf("Invalid input: page references must be between 1 and %d.\n", MAX_PAGES);
+        return;
+    }
+
+    printf("Enter the page reference string (space separated):\n");
+    for (int i = 0; i < totalPages; i++) {
+        scanf("%d", &pages[i]);
+    }
+
+    runTestCase("CUSTOM TEST CASE", pages, totalPages, frameCount, pageSizeKB);
+}
+
 int main(void) {
     int pageSizeKB;
+    int choice;
 
     printf(" \n");
     printf("Task 2 - Memory Management Simulation\n");
@@ -195,7 +221,19 @@ int main(void) {
         return 1;
     }
 
-    runBuiltInTestCases(pageSizeKB);
+    printf("\n1. Run built-in test cases (includes Belady's Anomaly demo)\n");
+    printf("2. Enter a custom reference string\n");
+    printf("Choice: ");
+    scanf("%d", &choice);
+
+    if (choice == 1) {
+        runBuiltInTestCases(pageSizeKB);
+    } else if (choice == 2) {
+        runCustomInput(pageSizeKB);
+    } else {
+        printf("Invalid choice. Exiting.\n");
+        return 1;
+    }
 
     printf("\n \n");
     printf("SIMULATION COMPLETED\n");
