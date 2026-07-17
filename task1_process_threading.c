@@ -73,6 +73,47 @@ void run_multithreading(void) {
 
     printf("All threads completed\n");
 }
+// 3. Race condition
+
+#define ITERATIONS 100000
+
+long counter = 0;
+pthread_mutex_t counter_lock = PTHREAD_MUTEX_INITIALIZER;
+
+
+void *increment_unsafe(void *arg) {
+    (void)arg;
+    for (int i = 0; i < ITERATIONS; i++) {
+        counter++;
+    }
+    return NULL;
+}
+
+void *increment_safe(void *arg) {
+    (void)arg;
+    for (int i = 0; i < ITERATIONS; i++) {
+        pthread_mutex_lock(&counter_lock);
+        counter++;
+        pthread_mutex_unlock(&counter_lock);
+    }
+    return NULL;
+}
+
+void run_race_condition(void) {
+    printf("\n3. RACE CONDITION DEMO\n");
+
+    pthread_t threads[3];
+
+    counter = 0;
+    for (int i = 0; i < 3; i++) pthread_create(&threads[i], NULL, increment_unsafe, NULL);
+    for (int i = 0; i < 3; i++) pthread_join(threads[i], NULL);
+    printf("Without mutex: Expected %d, got %ld (RACE CONDITION!)\n", 3 * ITERATIONS, counter);
+
+    counter = 0;
+    for (int i = 0; i < 3; i++) pthread_create(&threads[i], NULL, increment_safe, NULL);
+    for (int i = 0; i < 3; i++) pthread_join(threads[i], NULL);
+    printf("With mutex: Expected %d, got %ld (CORRECT)\n", 3 * ITERATIONS, counter);
+}
 
 //   main
 
@@ -83,7 +124,7 @@ int main(void) {
 
     run_process_creation();
     run_multithreading();
-   // run_race_condition();
+    run_race_condition();
     //run_semaphore();
    // run_scheduler();
    // run_deadlock();
