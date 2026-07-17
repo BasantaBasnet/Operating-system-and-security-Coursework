@@ -3,6 +3,12 @@
 #define MAX_PAGES 50
 #define EMPTY -1
 
+typedef struct {
+    int pageFaults;
+    int hits;
+    int totalReferences;
+} Result;
+
 // Fill all frames with EMPTY (no page loaded yet)
 void initializeFrames(int frames[], int frameCount) {
     for (int i = 0; i < frameCount; i++) {
@@ -35,10 +41,10 @@ void printReferenceString(int pages[], int totalPages) {
     printf("\n");
 }
 
-int runFIFO(int pages[], int totalPages, int frameCount) {
+Result runFIFO(int pages[], int totalPages, int frameCount) {
     int frames[frameCount];
     int nextReplace = 0;
-    int faults = 0;
+    Result result = {0, 0, totalPages};
 
     initializeFrames(frames, frameCount);
 
@@ -46,9 +52,10 @@ int runFIFO(int pages[], int totalPages, int frameCount) {
         int page = pages[i];
 
         if (pageExists(frames, frameCount, page)) {
+            result.hits++;
             printf("Ref %2d: page %d -> HIT   ", i + 1, page);
         } else {
-            faults++;
+            result.pageFaults++;
             frames[nextReplace] = page;
             nextReplace = (nextReplace + 1) % frameCount;
             printf("Ref %2d: page %d -> FAULT ", i + 1, page);
@@ -57,13 +64,14 @@ int runFIFO(int pages[], int totalPages, int frameCount) {
         displayFrames(frames, frameCount);
     }
 
-    return faults;
+    return result;
 }
+
 // LRU: replaces whichever page hasn't been used for the longest time
-int runLRU(int pages[], int totalPages, int frameCount) {
+Result runLRU(int pages[], int totalPages, int frameCount) {
     int frames[frameCount];
     int lastUsed[frameCount];
-    int faults = 0;
+    Result result = {0, 0, totalPages};
     int clock_time = 0;
 
     initializeFrames(frames, frameCount);
@@ -74,6 +82,7 @@ int runLRU(int pages[], int totalPages, int frameCount) {
         clock_time++;
 
         if (pageExists(frames, frameCount, page)) {
+            result.hits++;
             printf("Ref %2d: page %d -> HIT   ", i + 1, page);
 
             for (int j = 0; j < frameCount; j++) {
@@ -83,7 +92,7 @@ int runLRU(int pages[], int totalPages, int frameCount) {
                 }
             }
         } else {
-            faults++;
+            result.pageFaults++;
             printf("Ref %2d: page %d -> FAULT ", i + 1, page);
 
             int lruIndex = 0;
@@ -103,7 +112,37 @@ int runLRU(int pages[], int totalPages, int frameCount) {
         displayFrames(frames, frameCount);
     }
 
-    return faults;
+    return  result;
+}
+
+void printStatistics(Result result, const char *algorithm) {
+    float hitRatio = (float)result.hits / result.totalReferences * 100;
+    float missRatio = (float)result.pageFaults / result.totalReferences * 100;
+
+    printf("\n%s Results:\n", algorithm);
+    printf("  Page Faults : %d\n", result.pageFaults);
+    printf("  Hits        : %d\n", result.hits);
+    printf("  Hit Ratio   : %.2f%%\n", hitRatio);
+    printf("  Miss Ratio  : %.2f%%\n", missRatio);
+}
+
+void compareAlgorithms(Result fifo, Result lru) {
+    float fifoHit = (float)fifo.hits / fifo.totalReferences * 100;
+    float lruHit  = (float)lru.hits  / lru.totalReferences  * 100;
+
+    printf("\nAlgorithm     Faults   Hits   Hit Ratio\n");
+    printf("\n");
+    printf("FIFO          %5d   %4d    %6.2f%%\n", fifo.pageFaults, fifo.hits, fifoHit);
+    printf("LRU           %5d   %4d    %6.2f%%\n", lru.pageFaults, lru.hits, lruHit);
+    printf("\n");
+
+    if (fifo.pageFaults < lru.pageFaults) {
+        printf("FIFO performed better by %d fewer faults.\n", lru.pageFaults - fifo.pageFaults);
+    } else if (lru.pageFaults < fifo.pageFaults) {
+        printf("LRU performed better by %d fewer faults.\n", fifo.pageFaults - lru.pageFaults);
+    } else {
+        printf("Both algorithms performed the same.\n");
+    }
 }
 
 int main(void) {
@@ -143,14 +182,15 @@ int main(void) {
            pageSizeKB, frameCount, pageSizeKB * frameCount);
     printReferenceString(pages, totalPages);
 
-   printf("\n FIFO Simulation \n");
-    int fifoFaults = runFIFO(pages, totalPages, frameCount);
-    printf("\nTotal FIFO page faults: %d\n", fifoFaults);
+    printf("\n-- FIFO Simulation --\n");
+    Result fifoResult = runFIFO(pages, totalPages, frameCount);
 
-    printf("\n LRU Simulation \n");
-    int lruFaults = runLRU(pages, totalPages, frameCount);
-    printf("\nTotal LRU page faults: %d\n", lruFaults);
+    printf("\n-- LRU Simulation --\n");
+    Result lruResult = runLRU(pages, totalPages, frameCount);
+
+    printStatistics(fifoResult, "FIFO");
+    printStatistics(lruResult, "LRU");
+    compareAlgorithms(fifoResult, lruResult);
 
     return 0;
 }
-
