@@ -59,6 +59,52 @@ int runFIFO(int pages[], int totalPages, int frameCount) {
 
     return faults;
 }
+// LRU: replaces whichever page hasn't been used for the longest time
+int runLRU(int pages[], int totalPages, int frameCount) {
+    int frames[frameCount];
+    int lastUsed[frameCount];
+    int faults = 0;
+    int clock_time = 0;
+
+    initializeFrames(frames, frameCount);
+    for (int i = 0; i < frameCount; i++) lastUsed[i] = -1;
+
+    for (int i = 0; i < totalPages; i++) {
+        int page = pages[i];
+        clock_time++;
+
+        if (pageExists(frames, frameCount, page)) {
+            printf("Ref %2d: page %d -> HIT   ", i + 1, page);
+
+            for (int j = 0; j < frameCount; j++) {
+                if (frames[j] == page) {
+                    lastUsed[j] = clock_time;
+                    break;
+                }
+            }
+        } else {
+            faults++;
+            printf("Ref %2d: page %d -> FAULT ", i + 1, page);
+
+            int lruIndex = 0;
+            int oldestTime = clock_time;
+            for (int j = 0; j < frameCount; j++) {
+                if (frames[j] == EMPTY) { lruIndex = j; break; }
+                if (lastUsed[j] < oldestTime) {
+                    oldestTime = lastUsed[j];
+                    lruIndex = j;
+                }
+            }
+
+            frames[lruIndex] = page;
+            lastUsed[lruIndex] = clock_time;
+        }
+
+        displayFrames(frames, frameCount);
+    }
+
+    return faults;
+}
 
 int main(void) {
     int pageSizeKB;
@@ -97,9 +143,13 @@ int main(void) {
            pageSizeKB, frameCount, pageSizeKB * frameCount);
     printReferenceString(pages, totalPages);
 
-    printf("\n-- FIFO Simulation --\n");
+   printf("\n FIFO Simulation \n");
     int fifoFaults = runFIFO(pages, totalPages, frameCount);
     printf("\nTotal FIFO page faults: %d\n", fifoFaults);
+
+    printf("\n LRU Simulation \n");
+    int lruFaults = runLRU(pages, totalPages, frameCount);
+    printf("\nTotal LRU page faults: %d\n", lruFaults);
 
     return 0;
 }
