@@ -145,52 +145,61 @@ void compareAlgorithms(Result fifo, Result lru) {
     }
 }
 
-int main(void) {
-    int pageSizeKB;
-    int frameCount;
-
+void runTestCase(const char *label, int pages[], int totalPages, int frameCount, int pageSizeKB) {
+    printf("\n  \n");
+    printf("%s\n", label);
     printf("\n");
-    printf("Task 2 - Memory Management Simulation\n");
-    printf("\n");
-
-    printf("Enter page size (KB): ");
-    scanf("%d", &pageSizeKB);
-
-    printf("Enter number of memory frames: ");
-    scanf("%d", &frameCount);
-
-    if (pageSizeKB <= 0 || frameCount <= 0) {
-        printf("Invalid input.\n");
-        return 1;
-    }
-    printf("Enter number of page references: ");
-    int totalPages;
-    scanf("%d", &totalPages);
-
-    if (totalPages <= 0 || totalPages > MAX_PAGES) {
-        printf("Invalid input.\n");
-        return 1;
-    }
-
-    int pages[MAX_PAGES];
-    printf("Enter the page reference string (space separated):\n");
-    for (int i = 0; i < totalPages; i++) {
-        scanf("%d", &pages[i]);
-    }
-
     printf("Page Size: %d KB | Frames: %d | Simulated Capacity: %d KB\n",
            pageSizeKB, frameCount, pageSizeKB * frameCount);
     printReferenceString(pages, totalPages);
 
-    printf("\n-- FIFO Simulation --\n");
+    printf("\n FIFO Simulation \n");
     Result fifoResult = runFIFO(pages, totalPages, frameCount);
 
-    printf("\n-- LRU Simulation --\n");
+    printf("\n LRU Simulation \n");
     Result lruResult = runLRU(pages, totalPages, frameCount);
 
     printStatistics(fifoResult, "FIFO");
     printStatistics(lruResult, "LRU");
     compareAlgorithms(fifoResult, lruResult);
+}
+
+void runBuiltInTestCases(int pageSizeKB) {
+    int pages1[] = {7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2};
+    runTestCase("TEST CASE 1: General Comparison (3 frames)", pages1, 13, 3, pageSizeKB);
+    runTestCase("TEST CASE 2: Same String, More Frames (4 frames)", pages1, 13, 4, pageSizeKB);
+
+    int pages3[] = {1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5};
+    printf("\n \n");
+    printf("TEST CASE 3: Belady's Anomaly Check\n");
+    printf("\n");
+    printf("Comparing FIFO fault count as frame count increases.\n");
+
+    for (int frames = 3; frames <= 4; frames++) {
+        Result r = runFIFO(pages3, 12, frames);
+        printf("FIFO with %d frames -> %d page faults\n\n", frames, r.pageFaults);
+    }
+}
+int main(void) {
+    int pageSizeKB;
+
+    printf(" \n");
+    printf("Task 2 - Memory Management Simulation\n");
+    printf(" \n");
+
+    printf("Enter page size (KB): ");
+    scanf("%d", &pageSizeKB);
+
+    if (pageSizeKB <= 0) {
+        printf("Invalid input.\n");
+        return 1;
+    }
+
+    runBuiltInTestCases(pageSizeKB);
+
+    printf("\n \n");
+    printf("SIMULATION COMPLETED\n");
+    printf("\n");
 
     return 0;
 }
