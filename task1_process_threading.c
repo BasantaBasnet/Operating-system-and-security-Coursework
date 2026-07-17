@@ -149,6 +149,76 @@ void run_semaphore(void) {
     printf("Semaphore demonstration completed\n");
 }
 
+// 5. Round robin scheduler
+
+typedef struct {
+    char name[16];
+    int burst_time;
+    int remaining;
+    int waiting_time;
+    int completion_time;
+    int turnaround_time;
+} SchedProcess;
+
+void round_robin(SchedProcess procs[], int n, int quantum) {
+    printf("\n--- Round Robin (quantum = %d) ---\n", quantum);
+    printf("%-8s %-12s %-20s\n", "Time", "Process", "Action");
+
+    int queue[100], front = 0, back = 0, qsize = 0;
+    for (int i = 0; i < n; i++) { queue[back++] = i; qsize++; }
+
+    int clock_time = 0;
+
+    while (qsize > 0) {
+        int idx = queue[front];
+        front = (front + 1) % 100;
+        qsize--;
+
+        SchedProcess *p = &procs[idx];
+        int run_time = (p->remaining < quantum) ? p->remaining : quantum;
+
+        printf("%-8d %-12s Running for %d units\n", clock_time, p->name, run_time);
+
+        p->remaining -= run_time;
+        clock_time += run_time;
+
+        if (p->remaining > 0) {
+            queue[back] = idx;
+            back = (back + 1) % 100;
+            qsize++;
+        } else {
+            p->completion_time = clock_time;
+            p->turnaround_time = p->completion_time;
+            p->waiting_time = p->turnaround_time - p->burst_time;
+            printf("%-8d %-12s COMPLETED\n", clock_time, p->name);
+        }
+    }
+
+    printf("\n Stats\n");
+    double total_wait = 0, total_turn = 0;
+    for (int i = 0; i < n; i++) {
+        printf("%s: Burst=%d, Waiting=%d, Turnaround=%d\n",
+               procs[i].name, procs[i].burst_time, procs[i].waiting_time, procs[i].turnaround_time);
+        total_wait += procs[i].waiting_time;
+        total_turn += procs[i].turnaround_time;
+    }
+    printf("Average Waiting Time: %.2f\n", total_wait / n);
+    printf("Average Turnaround Time: %.2f\n", total_turn / n);
+}
+
+void run_scheduler(void) {
+    printf("\n5. ROUND ROBIN SCHEDULER\n");
+    printf("\n");
+
+    SchedProcess procs[4] = {
+        {"P1", 5, 5, 0, 0, 0},
+        {"P2", 3, 3, 0, 0, 0},
+        {"P3", 7, 7, 0, 0, 0},
+        {"P4", 2, 2, 0, 0, 0}
+    };
+
+    round_robin(procs, 4, 2);
+}
 
 
 
@@ -174,7 +244,7 @@ int main(void) {
     run_multithreading();
     run_race_condition();
     run_semaphore();
-   // run_scheduler();
+    run_scheduler();
    // run_deadlock();
 
    // printf("ALL DEMONSTRATIONS COMPLETED\n");
