@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include <pthread.h>
 #include <semaphore.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -47,7 +48,7 @@ void run_process_creation(void) {
 }
 
 
-//  2. Threads 
+//  2. Threads
 
 void *thread_task(void *arg) {
     char *name = (char *)arg;
@@ -220,7 +221,94 @@ void run_scheduler(void) {
     round_robin(procs, 4, 2);
 }
 
+//  6. Deadlock 
 
+pthread_mutex_t lock_a = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock_b = PTHREAD_MUTEX_INITIALIZER;
+
+typedef struct {
+    char name[16];
+    pthread_mutex_t *first;
+    pthread_mutex_t *second;
+} LockArgs;
+
+// This can really deadlock if two threads lock in opposite order.
+// A timeout stops the program from freezing so we can see it happen.
+void *deadlock_causing(void *arg) {
+    LockArgs *a = (LockArgs *)arg;
+
+    printf("[%s] trying to acquire first lock\n", a->name);
+    pthread_mutex_lock(a->first);
+    printf("[%s] ACQUIRED first lock\n", a->name);
+    usleep(200000);
+
+    printf("[%s] trying to acquire second lock\n", a->name);
+
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    ts.tv_sec += 1;
+
+    int rc = pthread_mutex_timedlock(a->second, &ts);
+    if (rc == 0) {
+        printf("[%s] ACQUIRED second lock\n", a->name);
+        pthread_mutex_unlock(a->second);
+    } else {
+        printf("[%s] COULD NOT acquire second lock (DEADLOCK AVOIDED by timeout)\n", a->name);
+    }
+
+    pthread_mutex_unlock(a->first);
+    printf("[%s] released locks\n", a->name);
+    return NULL;
+}
+
+// Every thread locks the resources in the same order (lock_a then lock_b).
+// This avoids the circular wait that caused the deadlock above.
+void *deadlock_safe(void *arg) {
+    LockArgs *a = (LockArgs *)arg;
+
+    pthread_mutex_t *ordered_first  = (a->first < a->second) ? a->first : a->second;
+    pthread_mutex_t *ordered_second = (a->first < a->second) ? a->second : a->first;
+
+    printf("[%s] trying to acquire locks in consistent order\n", a->name);
+    pthread_mutex_lock(ordered_first);
+    printf("[%s] acquired first lock\n", a->name);
+    usleep(100000);
+
+    pthread_mutex_lock(ordered_second);
+    printf("[%s] acquired second lock\n", a->name);
+    usleep(100000);
+    printf("[%s] safely holding both locks\n", a->name);
+
+    pthread_mutex_unlock(ordered_second);
+    pthread_mutex_unlock(ordered_first);
+    printf("[%s] released all locks\n", a->name);
+    return NULL;
+}
+
+void run_deadlock(void) {
+    printf("\n6. DEADLOCK DEMO AND PREVENTION\n");
+
+
+    printf("\n Unsafe order (can deadlock) \n");
+
+    pthread_t t1, t2;
+    LockArgs argsA = {"Thread-A", &lock_a, &lock_b};
+    LockArgs argsB = {"Thread-B", &lock_b, &lock_a};
+
+    pthread_create(&t1, NULL, deadlock_causing, &argsA);
+    pthread_create(&t2, NULL, deadlock_causing, &argsB);
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+
+    printf("\n Safe order (consistent locking) \n");
+
+    pthread_create(&t1, NULL, deadlock_safe, &argsA);
+    pthread_create(&t2, NULL, deadlock_safe, &argsB);
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+
+    printf("\nDeadlock prevention successful - all threads completed\n");
+}
 
 
 
@@ -245,7 +333,7 @@ int main(void) {
     run_race_condition();
     run_semaphore();
     run_scheduler();
-   // run_deadlock();
+    run_deadlock();
 
    // printf("ALL DEMONSTRATIONS COMPLETED\n");
    // printf("  1. Process creation: 3 child processes (fork)\n");
