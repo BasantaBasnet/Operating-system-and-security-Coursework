@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include <pthread.h>
+#include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -73,6 +74,7 @@ void run_multithreading(void) {
 
     printf("All threads completed\n");
 }
+
 // 3. Race condition
 
 #define ITERATIONS 100000
@@ -115,6 +117,52 @@ void run_race_condition(void) {
     printf("With mutex: Expected %d, got %ld (CORRECT)\n", 3 * ITERATIONS, counter);
 }
 
+// 4. Semaphore
+
+sem_t connection_pool;
+
+void *use_connection(void *arg) {
+    char *name = (char *)arg;
+    printf("[%s] waiting for a connection...\n", name);
+
+    sem_wait(&connection_pool);  // only 2 threads get past this at once
+    printf("[%s] got a connection, working...\n", name);
+    usleep(600000);
+    sem_post(&connection_pool);  // free up a slot for someone else
+
+    printf("[%s] released the connection\n", name);
+    return NULL;
+}
+
+void run_semaphore(void) {
+    printf("\n4. SEMAPHORE DEMO (max 2 concurrent)\n");
+
+    sem_init(&connection_pool, 0, 2);
+
+    pthread_t threads[4];
+    char names[4][16] = {"Client-1", "Client-2", "Client-3", "Client-4"};
+
+    for (int i = 0; i < 4; i++) pthread_create(&threads[i], NULL, use_connection, names[i]);
+    for (int i = 0; i < 4; i++) pthread_join(threads[i], NULL);
+
+    sem_destroy(&connection_pool);
+    printf("Semaphore demonstration completed\n");
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //   main
 
 int main(void) {
@@ -125,7 +173,7 @@ int main(void) {
     run_process_creation();
     run_multithreading();
     run_race_condition();
-    //run_semaphore();
+    run_semaphore();
    // run_scheduler();
    // run_deadlock();
 
