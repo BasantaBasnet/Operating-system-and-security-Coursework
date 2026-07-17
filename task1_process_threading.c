@@ -310,17 +310,6 @@ void run_deadlock(void) {
     printf("\nDeadlock prevention successful - all threads completed\n");
 }
 
-
-
-
-
-
-
-
-
-
-
-
 //   main
 
 int main(void) {
@@ -335,13 +324,13 @@ int main(void) {
     run_scheduler();
     run_deadlock();
 
-   // printf("ALL DEMONSTRATIONS COMPLETED\n");
-   // printf("  1. Process creation: 3 child processes (fork)\n");
-   // printf("  2. Multithreading: 3 threads (pthreads)\n");
-    //printf("  3. Mutex: race condition fixed\n");
-   // printf("  4. Semaphore: connection pool with 2 concurrent\n");
-    //printf("  5. Round robin scheduler: 4 processes simulated\n");
-   // printf("  6. Deadlock: shown and then prevented\n");
+    printf("ALL DEMONSTRATIONS COMPLETED\n");
+    printf("  1. Process creation: 3 child processes (fork)\n");
+    printf("  2. Multithreading: 3 threads (pthreads)\n");
+    printf("  3. Mutex: race condition fixed\n");
+    printf("  4. Semaphore: connection pool with 2 concurrent\n");
+    printf("  5. Round robin scheduler: 4 processes simulated\n");
+    printf("  6. Deadlock: shown and then prevented\n");
 
     return 0;
 
