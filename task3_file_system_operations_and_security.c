@@ -51,14 +51,21 @@ User *findUser(const char *username) {
     return NULL;
 }
 
+// After scanf() leaves a leftover newline in the input buffer, this
+// clears it so the next fgets() in the main loop doesn't read a blank line.
+void clearInputBuffer(void) {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF) { }
+}
 void login(void) {
     char username[MAX_USERNAME];
     char password[MAX_PASSWORD];
 
     printf("Username: ");
-    scanf("%s", username);
+    scanf("%19s", username);   // width limit prevents buffer overflow
     printf("Password: ");
-    scanf("%s", password);
+    scanf("%19s", password);
+    clearInputBuffer();
 
     User *u = findUser(username);
     if (u == NULL || strcmp(u->password, password) != 0) {
@@ -103,6 +110,11 @@ void printPermissions(int perm) {
 
 void createFile(const char *name, int permissions) {
     if (currentUser == NULL) { printf("Error: You must be logged in.\n"); return; }
+
+    if (strlen(name) >= MAX_FILENAME) {
+        printf("Error: Filename too long (max %d characters).\n", MAX_FILENAME - 1);
+        return;
+    }
     if (fileCount >= MAX_FILES) { printf("Error: Maximum files reached.\n"); return; }
 
     for (int i = 0; i < fileCount; i++) {
@@ -182,7 +194,7 @@ void listFiles(void) {
     if (currentUser == NULL) { printf("Error: You must be logged in.\n"); return; }
 
     printf("\n%-20s %-10s %-12s %s\n", "Name", "Owner", "Permissions", "Octal");
-    printf("--------------------------------------------------------\n");
+    printf("     \n");
     for (int i = 0; i < fileCount; i++) {
         if (files[i].exists) {
             printf("%-20s %-10s ", files[i].name, files[i].owner);
