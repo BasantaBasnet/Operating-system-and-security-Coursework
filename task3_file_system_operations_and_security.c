@@ -1,9 +1,20 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <stdbool.h>
+#include <ctype.h>
+
 #define MAX_USERS 10
 #define MAX_USERNAME 20
 #define MAX_PASSWORD 20
+
+#define MAX_FILES 100
+#define MAX_FILENAME 50
+#define MAX_CONTENT 500
+
+#define PERM_READ    4
+#define PERM_WRITE   2
+#define PERM_EXECUTE 1
 
 typedef struct {
     char username[MAX_USERNAME];
@@ -13,6 +24,17 @@ typedef struct {
 User users[MAX_USERS];
 int userCount = 0;
 User *currentUser = NULL;
+
+typedef struct {
+    char name[MAX_FILENAME];
+    char owner[MAX_USERNAME];
+    int permissions;
+    char content[MAX_CONTENT];
+    bool exists;
+} File;
+
+File files[MAX_FILES];
+int fileCount = 0;
 
 void initializeUsers(void) {
     strcpy(users[0].username, "admin");
@@ -54,9 +76,61 @@ void logout(void) {
     currentUser = NULL;
 }
 
+int ownerPerm(int perm)  { return (perm / 100) % 10; }
+int groupPerm(int perm)  { return (perm / 10) % 10; }
+int othersPerm(int perm) { return perm % 10; }
+
+void printPermissions(int perm) {
+    int owner = ownerPerm(perm);
+    int group = groupPerm(perm);
+    int others = othersPerm(perm);
+    printf("%c%c%c", (owner & PERM_READ) ? 'r' : '-', (owner & PERM_WRITE) ? 'w' : '-', (owner & PERM_EXECUTE) ? 'x' : '-');
+    printf("%c%c%c", (group & PERM_READ) ? 'r' : '-', (group & PERM_WRITE) ? 'w' : '-', (group & PERM_EXECUTE) ? 'x' : '-');
+    printf("%c%c%c", (others & PERM_READ) ? 'r' : '-', (others & PERM_WRITE) ? 'w' : '-', (others & PERM_EXECUTE) ? 'x' : '-');
+}
+
+void createFile(const char *name, int permissions) {
+    if (currentUser == NULL) { printf("Error: You must be logged in.\n"); return; }
+    if (fileCount >= MAX_FILES) { printf("Error: Maximum files reached.\n"); return; }
+
+    for (int i = 0; i < fileCount; i++) {
+        if (files[i].exists && strcmp(files[i].name, name) == 0) {
+            printf("Error: File '%s' already exists.\n", name);
+            return;
+        }
+    }
+
+    File *f = &files[fileCount++];
+    strcpy(f->name, name);
+    strcpy(f->owner, currentUser->username);
+    f->permissions = permissions;
+    f->content[0] = '\0';
+    f->exists = true;
+
+    printf("File '%s' created (permissions: ", name);
+    printPermissions(permissions);
+    printf(")\n");
+}
+
+void printHelp(void) {
+    printf("\nCommands:\n");
+    printf("  login\n");
+    printf("  logout\n");
+    printf("  create <filename> <permissions>   e.g. create notes.txt 755\n");
+    printf("  help\n");
+    printf("  exit\n");
+
+    printf("\nPermissions (3 digits, owner/others):\n");
+    printf("  4 = read (r), 2 = write (w), 1 = execute (x)\n");
+    printf("  755 = rwxr-xr-x (owner: all, others: read+execute)\n");
+    printf("  644 = rw-r--r-- (owner: read+write, others: read)\n");
+    printf("  700 = rwx------ (only owner can access)\n");
+    printf("  Default if omitted: 754\n");
+}
+
 int main(void) {
     char line[500];
-    char command[100];
+    char command[100], arg1[100], arg2[500];
 
     printf(" \n");
     printf("Task 3 - File System & Security\n");
@@ -75,20 +149,35 @@ int main(void) {
         if (token == NULL) continue;
         strcpy(command, token);
 
+        arg1[0] = '\0';
+        arg2[0] = '\0';
+        token = strtok(NULL, " ");
+        if (token != NULL) {
+            strcpy(arg1, token);
+            char *rest = strtok(NULL, "");
+            if (rest != NULL) strcpy(arg2, rest);
+        }
+
         if (strcmp(command, "exit") == 0) {
             printf("Goodbye!\n");
             break;
-       } else if (strcmp(command, "help") == 0) {
-            printf("\nCommands:\n");
-            printf("  login\n");
-            printf("  logout\n");
-            printf("  help\n");
-            printf("  exit\n");
+        } else if (strcmp(command, "help") == 0) {
+            printHelp();
+        } else if (strcmp(command, "create") == 0) {
+            if (strlen(arg1) == 0) { printf("Usage: create <filename> <permissions>\n"); continue; }
+
+            int perms = 754; // NOT 0754 - a leading 0 in C means octal, which would break our decimal-digit permission scheme
+
+            if (strlen(arg2) == 3 && isdigit((unsigned char)arg2[0]) &&
+                isdigit((unsigned char)arg2[1]) && isdigit((unsigned char)arg2[2])) {
+                perms = (arg2[0] - '0') * 100 + (arg2[1] - '0') * 10 + (arg2[2] - '0');
+            }
+            createFile(arg1, perms);
         } else if (strcmp(command, "login") == 0) {
             login();
         } else if (strcmp(command, "logout") == 0) {
             logout();
-        } else { 
+        } else {
 
             printf("Unknown command. Type 'help' for commands.\n");
         }
