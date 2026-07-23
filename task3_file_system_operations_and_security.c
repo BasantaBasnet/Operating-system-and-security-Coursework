@@ -163,6 +163,34 @@ void writeFile(const char *name, const char *content) {
     f->content[MAX_CONTENT - 1] = '\0';
     printf("File '%s' updated.\n", name);
 }
+void deleteFile(const char *name) {
+    if (currentUser == NULL) { printf("Error: You must be logged in.\n"); return; }
+
+    File *f = findFile(name);
+    if (f == NULL) { printf("Error: File '%s' not found.\n", name); return; }
+
+    if (strcmp(currentUser->username, f->owner) != 0) {
+        printf("Error: Only the owner can delete this file.\n");
+        return;
+    }
+
+    f->exists = false;
+    printf("File '%s' deleted.\n", name);
+}
+
+void listFiles(void) {
+    if (currentUser == NULL) { printf("Error: You must be logged in.\n"); return; }
+
+    printf("\n%-20s %-10s %-12s %s\n", "Name", "Owner", "Permissions", "Octal");
+    printf("--------------------------------------------------------\n");
+    for (int i = 0; i < fileCount; i++) {
+        if (files[i].exists) {
+            printf("%-20s %-10s ", files[i].name, files[i].owner);
+            printPermissions(files[i].permissions);
+            printf("    %03d\n", files[i].permissions);
+        }
+    }
+}
 
 void printHelp(void) {
     printf("\nCommands:\n");
@@ -171,6 +199,8 @@ void printHelp(void) {
     printf("  create <filename> <permissions>   e.g. create notes.txt 755\n");
     printf("  read <filename>\n");
     printf("  write <filename> <content>\n");
+    printf("  delete <filename>\n");
+    printf("  list\n");
     printf("  help\n");
     printf("  exit\n");
 
@@ -229,11 +259,19 @@ int main(void) {
             createFile(arg1, perms);
         } else if (strcmp(command, "read") == 0) {
             if (strlen(arg1) == 0) { printf("Usage: read <filename>\n"); continue; }
+
             readFile(arg1);
         } else if (strcmp(command, "write") == 0) {
             if (strlen(arg1) == 0 || strlen(arg2) == 0) { printf("Usage: write <filename> <content>\n"); continue; }
+
             writeFile(arg1, arg2);
+        } else if (strcmp(command, "delete") == 0) {
+            if (strlen(arg1) == 0) { printf("Usage: delete <filename>\n"); continue; }
+            deleteFile(arg1);
+        } else if (strcmp(command, "list") == 0) {
+            listFiles();
         } else if (strcmp(command, "login") == 0) {
+
             login();
         } else if (strcmp(command, "logout") == 0) {
             logout();
