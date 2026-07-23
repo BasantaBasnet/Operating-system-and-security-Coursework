@@ -80,6 +80,18 @@ int ownerPerm(int perm)  { return (perm / 100) % 10; }
 int groupPerm(int perm)  { return (perm / 10) % 10; }
 int othersPerm(int perm) { return perm % 10; }
 
+// Note: enforcement uses two tiers (owner vs everyone else) for
+// simplicity - the group digit is displayed but not separately
+// enforced, since there's no group-membership system here.
+bool hasPermission(File *file, User *user, int required) {
+    if (user == NULL) return false;
+
+    if (strcmp(user->username, file->owner) == 0) {
+        return (ownerPerm(file->permissions) & required) == required;
+    }
+    return (othersPerm(file->permissions) & required) == required;
+}
+
 void printPermissions(int perm) {
     int owner = ownerPerm(perm);
     int group = groupPerm(perm);
@@ -112,11 +124,53 @@ void createFile(const char *name, int permissions) {
     printf(")\n");
 }
 
+File *findFile(const char *name) {
+    for (int i = 0; i < fileCount; i++) {
+        if (files[i].exists && strcmp(files[i].name, name) == 0) return &files[i];
+    }
+    return NULL;
+}
+
+void readFile(const char *name) {
+    if (currentUser == NULL) { printf("Error: You must be logged in.\n"); return; }
+
+    File *f = findFile(name);
+    if (f == NULL) { printf("Error: File '%s' not found.\n", name); return; }
+
+    if (!hasPermission(f, currentUser, PERM_READ)) {
+        printf("Error: Permission denied (read).\n");
+        return;
+    }
+
+    printf("\n  %s \n", f->name);
+    printf("Owner: %s | Permissions: ", f->owner);
+    printPermissions(f->permissions);
+    printf("\nContent: %s\n", f->content);
+}
+
+void writeFile(const char *name, const char *content) {
+    if (currentUser == NULL) { printf("Error: You must be logged in.\n"); return; }
+
+    File *f = findFile(name);
+    if (f == NULL) { printf("Error: File '%s' not found.\n", name); return; }
+
+    if (!hasPermission(f, currentUser, PERM_WRITE)) {
+        printf("Error: Permission denied (write).\n");
+        return;
+    }
+
+    strncpy(f->content, content, MAX_CONTENT - 1);
+    f->content[MAX_CONTENT - 1] = '\0';
+    printf("File '%s' updated.\n", name);
+}
+
 void printHelp(void) {
     printf("\nCommands:\n");
     printf("  login\n");
     printf("  logout\n");
     printf("  create <filename> <permissions>   e.g. create notes.txt 755\n");
+    printf("  read <filename>\n");
+    printf("  write <filename> <content>\n");
     printf("  help\n");
     printf("  exit\n");
 
@@ -173,6 +227,12 @@ int main(void) {
                 perms = (arg2[0] - '0') * 100 + (arg2[1] - '0') * 10 + (arg2[2] - '0');
             }
             createFile(arg1, perms);
+        } else if (strcmp(command, "read") == 0) {
+            if (strlen(arg1) == 0) { printf("Usage: read <filename>\n"); continue; }
+            readFile(arg1);
+        } else if (strcmp(command, "write") == 0) {
+            if (strlen(arg1) == 0 || strlen(arg2) == 0) { printf("Usage: write <filename> <content>\n"); continue; }
+            writeFile(arg1, arg2);
         } else if (strcmp(command, "login") == 0) {
             login();
         } else if (strcmp(command, "logout") == 0) {
